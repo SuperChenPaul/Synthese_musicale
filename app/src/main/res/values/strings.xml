@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Synthese_musicale</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="on_est_sur_la_premiere_page">On est sur la premiere page</string>
+    <string name="scan">Scan</string>
+    <string name="name">Name :</string>
+    <string name="adresse_mac">Adresse MAC :</string>
+</resources>

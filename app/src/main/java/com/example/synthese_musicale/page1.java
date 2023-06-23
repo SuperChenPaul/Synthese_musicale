@@ -1,5 +1,6 @@
 package com.example.synthese_musicale;
 
+import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
@@ -12,6 +13,8 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -22,6 +25,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Set;
 import java.util.UUID;
 
@@ -39,13 +44,29 @@ public class page1 extends Fragment {
     private BluetoothAdapter BTAdapter;
     private BluetoothSocket bTSocket;
     private BluetoothDevice mmDevice;
+    private InputStream mmInStream;
+    public static OutputStream mmOutStream;
+    private byte[] mmBuffer;
+    private Handler handler;
     //private ArrayList<DeviceItem> deviceItemList;
     public static int REQUEST_BLUETOOTH = 1;
     private View vue;
     private Button scan, appareil;
     private TextView adresse;
+    private interface MessageConstants {
+        public static final int MESSAGE_READ = 0;
+        public static final int MESSAGE_WRITE = 1;
+        public static final int MESSAGE_TOAST = 2;
+
+        // ... (Add other message types here as needed.)
+    }
+    Fragment page2;
+    Activity main;
     //private DeviceItem newDevice;
     String addresse, nom, uuid;
+
+    protected boolean test ;
+    String texte = " ";
 
 
     // TODO: Rename and change types of parameters
@@ -59,9 +80,7 @@ public class page1 extends Fragment {
         ft.addToBackStack(null);
         ft.commit();
     }
-    public page1() {
-        // Required empty public constructor
-    }
+
 
     /**
      * Use this factory method to create a new instance of
@@ -102,6 +121,8 @@ public class page1 extends Fragment {
         appareil = (Button) vue.findViewById(R.id.appareil);
         adresse = (TextView) vue.findViewById(R.id.addresse);
 
+        Log.d("test", "valeur :" + test);
+
         if (!BTAdapter.isEnabled()) {
             Intent enableBT = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableBT, REQUEST_BLUETOOTH);
@@ -124,7 +145,7 @@ public class page1 extends Fragment {
         Log.i("BT", "Nombre d'appareil associe : " + pairedDevices.size());
         if (pairedDevices.size() > 0) {
             for (BluetoothDevice device : pairedDevices) {
-                if (device.getName().equals("PIANOBT")) {
+                if (device.getName().equals("IT2R04")) {
                     addresse = device.getAddress();
                     nom = device.getName();
                     //newDevice = new DeviceItem(device.getName(), device.getAddress(), "false");
@@ -156,19 +177,19 @@ public class page1 extends Fragment {
                 Log.i("BT", "Nombre d'appareil associe : " + pairedDevices.size());
                 if (pairedDevices.size() > 0) {
                     for (BluetoothDevice device : pairedDevices) {
-                        if (device.getName().equals("PIANOBT")) {
+                        if (device.getName().equals("IT2R04")) {
 
                             addresse = device.getAddress();
                             nom = device.getName();
                             mmDevice=device;
                         }
-
-
                         //newDevice = new DeviceItem(device.getName(), device.getAddress(), "false");
                         //deviceItemList.add(newDevice);
                         Log.i("BT", "adresse : " + addresse);
                         Log.i("BT", "NOM : " + nom);
                         Toast.makeText(getContext(), "Appareils detecte", Toast.LENGTH_SHORT).show();
+                        appareil.setText("Name : " + nom);
+                        adresse.setText("Adresse : " + addresse);
 
                     }
                 }
@@ -197,12 +218,30 @@ public class page1 extends Fragment {
                     Log.e("BT", "Socket's create() method failed", e);
                 }
                 bTSocket = tmp;
+                InputStream tmpIn = null;
+                OutputStream tmpOut = null;
+                try {
+                    tmpIn = bTSocket.getInputStream();
+                } catch (IOException e) {
+                    Log.e("BT", "Error occurred when creating input stream", e);
+                }
+                try {
+                    tmpOut = bTSocket.getOutputStream();
+                } catch (IOException e) {
+                    Log.e("BT", "Error occurred when creating output stream", e);
+                }
+                mmInStream = tmpIn;
+                mmOutStream = tmpOut;
+
 
                 try {
                     // Connect to the remote device through the socket. This call blocks
                     // until it succeeds or throws an exception.
                     Toast.makeText(getContext(), "Connexion....", Toast.LENGTH_LONG).show();
                     bTSocket.connect();
+                    page2 = new page2();
+                    ((com.example.synthese_musicale.page2) page2).mmOutStream = mmOutStream;
+                    lanceFragment(new page2());
 
                 } catch (IOException connectException) {
                     Toast.makeText(getContext(), "Unable to connect to the device", Toast.LENGTH_LONG).show();// Unable to connect; close the socket and return.
@@ -213,12 +252,43 @@ public class page1 extends Fragment {
                     }
 
                 }
-                lanceFragment(new page2());
+                Log.i("BT", "Status connexion : " + bTSocket.isConnected());
+
+
+
             }
 
-            });
 
+        });
 
         return vue;
-    }}
+
+    }
+    public void write(byte[] bytes) {
+        try {
+
+            mmBuffer = new byte[1024];
+
+            mmOutStream.write(bytes);
+
+            Log.i("BT", "Donnes envoyes " );
+            // Share the sent message with the UI activity.
+            /*Message writtenMsg = handler.obtainMessage(
+                    MessageConstants.MESSAGE_WRITE, -1, -1, mmBuffer);
+            writtenMsg.sendToTarget();*/
+        } catch (IOException e) {
+            Log.e("BT", "Error occurred when sending data", e);
+
+            // Send a failure message back to the activity.
+            /*Message writeErrorMsg =
+                    handler.obtainMessage(MessageConstants.MESSAGE_TOAST);
+            Bundle bundle = new Bundle();
+            bundle.putString("toast",
+                    "Couldn't send data to the other device");
+            writeErrorMsg.setData(bundle);
+            handler.sendMessage(writeErrorMsg);*/
+        }
+    }
+}
+
 
